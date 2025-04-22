@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ventas Fischer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Ventas Fischer</h1>
+      <nav>
+        <a href="#productos">Productos</a>
+        <a href="#carrito">Carrito</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="productos">
+      <h2>Catálogo</h2>
+      <div class="productos-grid">
+        <div class="producto">
+          <img src="Productos Imagenes/Producto1.jpg" alt="Producto 1" />
+          <h3>Producto 1</h3>
+          <p class="descripcion">Este es un producto de alta calidad.</p>
+          <p class="precio">$100</p>
+          <button onclick="agregarAlCarrito('Producto 1', 100, 'producto1.jpg', 'Este es un producto de alta calidad.')">Agregar al carrito</button>
+        </div>
+        <div class="producto">
+          <img src="Productos Imagenes/Producto2.jpg" alt="Producto 2" />
+          <h3>Producto 2</h3>
+          <p class="descripcion">Este producto es increíblemente versátil.</p>
+          <p class="precio">$150</p>
+          <button onclick="agregarAlCarrito('Producto 2', 150, 'producto2.jpg', 'Este producto es increíblemente versátil.')">Agregar al carrito</button>
+        </div>
+        <div class="producto">
+          <img src="Productos Imagenes/Producto3.jpg" alt="Producto 3" />
+          <h3>Producto 3</h3>
+          <p class="descripcion">Producto premium, diseñado para durar.</p>
+          <p class="precio">$200</p>
+          <button onclick="agregarAlCarrito('Producto 3', 200, 'producto3.jpg', 'Producto premium, diseñado para durar.')">Agregar al carrito</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="carrito">
+      <h2>Carrito de compras</h2>
+      <ul id="lista-carrito"></ul>
+      <p><strong>Total:</strong> $<span id="total">0</span></p>
+      <button onclick="irAFinalizarCompra()" id="btn-finalizar">Finalizar compra</button>
+    </section>
+
+    <section id="formulario" class="hidden">
+      <h2>Finalizar Pedido</h2>
+      <form onsubmit="realizarPedido(event)">
+        <input type="text" id="nombre" placeholder="Nombre completo" required>
+        <input type="text" id="direccion" placeholder="Dirección" required>
+        <input type="email" id="email" placeholder="Correo electrónico" required>
+        <select id="pago" required>
+          <option value="">Seleccione método de pago</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="tarjeta">Tarjeta</option>
+        </select>
+        <button type="submit">Realizar pedido</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Ventas Fischer</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
