@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ventas Fischer</title>
+  <!-- Bootstrap CSS, Icons y Chart.js -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg:        #F4F6F8;
+      --primary:   #2C3E50;
+      --secondary: #18BC9C;
+      --accent:    #F39C12;
+      --text:      #2C3E50;
+      --card-bg:   #FFFFFF;
+      --shadow:    rgba(0,0,0,0.05);
+    }
+    body {
+      padding-top:80px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .navbar { background: var(--primary)!important; }
+    .navbar-brand, .navbar .nav-link { color: #fff!important; }
+    .navbar .nav-link:hover { color: var(--accent)!important; }
+    .card {
+      background: var(--card-bg);
+      border:none;
+      border-radius:12px;
+      box-shadow:0 4px 12px var(--shadow);
+    }
+    .product-card img {
+      height:180px;
+      object-fit:cover;
+      border-top-left-radius:12px;
+      border-top-right-radius:12px;
+    }
+    .btn-primary {
+      background: var(--secondary);
+      border-color: var(--secondary);
+      color:#fff;
+    }
+    .btn-secondary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color:#fff;
+    }
+    .form-control:focus {
+      border-color: var(--secondary);
+      box-shadow:0 0 0 0.2rem rgba(24,188,156,0.25);
+    }
+    .thumb-img {
+      width:50px;height:50px;
+      object-fit:cover;border-radius:6px;
+    }
+    .toast-container{position:fixed;top:1rem;right:1rem;z-index:1055;}
+    #adminSection, #adminLogin{display:none;}
+    .pagination { justify-content:center; }
+    .product-item { cursor:pointer; }
+    #newImgsPreview img {
+      margin:4px;
+      width:60px; height:60px;
+      object-fit:cover; border-radius:6px;
+    }
+    #detailImgs img {
+      margin:4px;
+      max-width:150px; max-height:150px;
+      object-fit:cover; border-radius:6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Ventas Fischer</a>
+      <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
+      <div class="collapse navbar-collapse" id="nav">
+        <div class="ms-auto d-flex align-items-center">
+          <input id="searchInput" type="search" class="form-control me-2" placeholder="Buscar…">
+          <select id="langSelect" class="form-select me-3" style="width:auto;">
+            <option value="es">ES</option>
+            <option value="en">EN</option>
+          </select>
+          <a href="#" class="btn btn-outline-light position-relative me-2" id="openCartBtn">
+            <i class="bi bi-cart3"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartCount">0</span>
+          </a>
+          <a href="#" class="btn btn-outline-light" id="toggleAdminBtn"><i class="bi bi-shield-lock"></i></a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Productos -->
+    <h1 class="text-center my-4">Nuestros Productos</h1>
+    <div class="row" id="productsRow"></div>
+    <nav><ul class="pagination mt-3" id="pagination"></ul></nav>
+
+    <!-- Login Admin -->
+    <div id="adminLogin" class="card p-4 my-4 mx-auto" style="max-width:400px;">
+      <h5>Acceso de Administrador</h5>
+      <form class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label class="form-label">Usuario</label>
+          <input type="text" id="adminUser" class="form-control" required>
+          <div class="invalid-feedback">Requerido</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="adminPass" class="form-control" required>
+          <div class="invalid-feedback">Requerido</div>
+        </div>
+        <button type="button" class="btn btn-secondary w-100" id="loginAdminBtn">Ingresar</button>
+      </form>
+    </div>
+
+    <!-- Sección Admin -->
+    <div id="adminSection">
+      <h3>Panel de Administrador</h3>
+      <div class="row mb-5">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h5>Ventas Últimos 7d</h5>
+            <canvas id="salesChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h5>Estadísticas</h5>
+            <p>Ventas Totales: <strong id="statTotalSales">0</strong></p>
+            <p>Ingresos: <strong id="statRevenue">$0</strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agregar Producto -->
+      <div class="card p-4 shadow-sm mb-5">
+        <h5>Agregar Producto</h5>
+        <form id="addForm" class="row g-2 needs-validation" novalidate>
+          <div class="col-md-4">
+            <label class="form-label">Nombre</label>
+            <input type="text" id="newProdName" class="form-control" required>
+            <div class="invalid-feedback">Requerido</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Precio</label>
+            <input type="number" id="newProdPrice" class="form-control" required>
+            <div class="invalid-feedback">Requerido</div>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Imágenes</label>
+            <input type="file" id="newProdImgFiles" class="form-control" accept="image/*" multiple required>
+            <div class="invalid-feedback">Requerido</div>
+            <div id="newImgsPreview" class="mt-2 d-flex flex-wrap"></div>
+          </div>
+          <div class="col-md-12">
+            <label class="form-label">Descripción</label>
+            <textarea id="newProdDesc" class="form-control"></textarea>
+          </div>
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">Agregar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Administrar Productos -->
+      <div class="card p-4 shadow-sm mb-5">
+        <h5>Administrar Productos</h5>
+        <table class="table table-hover align-middle mt-3">
+          <thead>
+            <tr>
+              <th>Img</th><th>Nombre</th><th>Precio</th><th>Descripción</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="adminProductsTable"></tbody>
+        </table>
+      </div>
+
+      <!-- Historial de Ventas -->
+      <div class="card p-4 shadow-sm mb-5">
+        <h5>Historial de Ventas</h5>
+        <ul class="list-group" id="salesHistory"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Carrito -->
+  <div class="modal fade" id="cartModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Tu Carrito</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="list-group mb-3" id="cartList"></ul>
+          <p class="text-end"><strong>Total</strong>: <span id="cartTotal">$0</span></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Seguir comprando</button>
+          <button class="btn btn-primary" id="toCheckoutBtn">Finalizar compra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Checkout -->
+  <div class="modal fade" id="checkoutModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Detalles de Envío</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="checkoutForm" class="needs-validation" novalidate>
+            <div class="mb-2"><input type="text" id="customerName" class="form-control" placeholder="Nombre completo" required><div class="invalid-feedback">Requerido</div></div>
+            <div class="mb-2"><input type="email" id="customerEmail" class="form-control" placeholder="Correo electrónico" required><div class="invalid-feedback">Requerido</div></div>
+            <div class="mb-2"><input type="tel" id="customerPhone" class="form-control" placeholder="Teléfono" required><div class="invalid-feedback">Requerido</div></div>
+            <div class="mb-2"><input type="text" id="customerAddress" class="form-control" placeholder="Dirección" required><div class="invalid-feedback">Requerido</div></div>
+            <div class="mb-3">
+              <label class="form-label">Método de Pago</label>
+              <select id="paymentMethod" class="form-select" required>
+                <option value="Contra Entrega">Contra Entrega</option>
+                <option value="Transferencia">Transferencia</option>
+              </select>
+              <div class="invalid-feedback">Requerido</div>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Enviar Pedido</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Producto -->
+  <div class="modal fade" id="editProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Producto</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editProdId">
+          <div class="mb-2"><label class="form-label">Nombre</label><input type="text" id="editProdName" class="form-control" required><div class="invalid-feedback">Requerido</div></div>
+          <div class="mb-2"><label class="form-label">Precio</label><input type="number" id="editProdPrice" class="form-control" required><div class="invalid-feedback">Requerido</div></div>
+          <div class="mb-2"><label class="form-label">Descripción</label><textarea id="editProdDesc" class="form-control"></textarea></div>
+          <div class="mb-3"><label class="form-label">Imagen</label><input type="file" id="editProdImgFile" class="form-control" accept="image/*"><img id="editImgPreview" class="mt-2 thumb-img" style="display:none;" alt="Preview"></div>
+          <button class="btn btn-primary w-100" id="saveEditProductBtn">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Detalle Producto -->
+  <div class="modal fade" id="productDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="detailTitle"></h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div id="detailImgs" class="d-flex flex-wrap justify-content-center mb-3"></div>
+          <h4 class="text-success" id="detailPrice"></h4>
+          <p id="detailDesc"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  (function(){
+    const adminCred = {user:'admin',pass:'1234'};
+    let isLoggedIn = sessionStorage.getItem('isAdmin')==='1';
+    let products    = JSON.parse(localStorage.getItem('products')||'[]');
+    let cart        = JSON.parse(localStorage.getItem('cart')   ||'[]');
+    let sales       = JSON.parse(localStorage.getItem('sales')  ||'[]');
+    let filtered    = [...products];
+    const perPage   = 6;
+
+    const saveState = ()=>{
+      localStorage.setItem('products',JSON.stringify(products));
+      localStorage.setItem('cart',JSON.stringify(cart));
+      localStorage.setItem('sales',JSON.stringify(sales));
+    };
+
+    const showToast = (msg,type='success')=>{
+      const t=document.createElement('div');
+      t.className=`toast align-items-center text-bg-${type} border-0 show mb-2`;
+      t.innerHTML=`<div class="d-flex"><div class="toast-body">${msg}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+      document.getElementById('toastContainer').append(t);
+      setTimeout(()=>bootstrap.Toast.getOrCreateInstance(t).hide(),3000);
+    };
+
+    function paginate(arr,page){
+      return arr.slice((page-1)*perPage,page*perPage);
+    }
+
+    // --- RENDER FUNCTIONS ---
+
+    const renderProducts = page => {
+      const row = document.getElementById('productsRow');
+      row.innerHTML = '';
+      paginate(filtered,page).forEach(p => {
+        const thumb = Array.isArray(p.img)? p.img[0] : p.img;
+        row.innerHTML += `
+          <div class="col-md-4 mb-4">
+            <div class="card product-card product-item" data-id="${p.id}">
+              <img src="${thumb}" alt="${p.name}">
+              <div class="card-body text-center">
+                <h5 class="card-title">${p.name}</h5>
+                <p class="card-text">${p.description||''}</p>
+                <p class="fw-bold">$${p.price} MXN</p>
+                <button class="btn btn-primary btn-sm" data-id="${p.id}">+</button>
+              </div>
+            </div>
+          </div>`;
+      });
+      renderPagination();
+    };
+
+    const renderPagination = () => {
+      const pages = Math.ceil(filtered.length/perPage),
+            ul    = document.getElementById('pagination');
+      ul.innerHTML = '';
+      for(let i=1;i<=pages;i++){
+        ul.innerHTML += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+      }
+    };
+
+    const renderCart = () => {
+      const list = document.getElementById('cartList'),
+            cnt  = document.getElementById('cartCount');
+      let total=0;
+      list.innerHTML = '';
+      cart.forEach((it,i)=>{
+        total += it.price*it.qty;
+        list.innerHTML += `
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>${it.name}
+              <input type="number" min="1" value="${it.qty}" data-idx="${i}" class="form-control form-control-sm d-inline" style="width:60px;">
+            </div>
+            <div>$${it.price*it.qty}
+              <button class="btn btn-sm btn-outline-danger ms-2" data-rm="${i}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </li>`;
+      });
+      cnt.textContent = cart.reduce((a,i)=>a+i.qty,0);
+      document.getElementById('cartTotal').textContent = `$${total} MXN`;
+    };
+
+    const renderAdminProducts = () => {
+      const tb = document.getElementById('adminProductsTable');
+      tb.innerHTML = '';
+      products.forEach(p=>{
+        const thumb = Array.isArray(p.img)? p.img[0] : p.img;
+        tb.innerHTML += `
+          <tr>
+            <td><img src="${thumb}" class="thumb-img"></td>
+            <td>${p.name}</td>
+            <td>$${p.price}</td>
+            <td>${p.description||''}</td>
+            <td>
+              <button class="btn btn-sm btn-primary edit-prod-btn" data-id="${p.id}">✎</button>
+              <button class="btn btn-sm btn-danger delete-prod-btn" data-id="${p.id}">🗑</button>
+            </td>
+          </tr>`;
+      });
+    };
+
+    const renderSales = () => {
+      const ul = document.getElementById('salesHistory');
+      ul.innerHTML = '';
+      sales.forEach((s,i)=>{
+        const delivered = s.status==='Pedido entregado';
+        ul.innerHTML += `
+          <li class="list-group-item ${delivered?'list-group-item-success':''}">
+            <strong>${s.customer.name}</strong>
+            (${s.customer.email}, 📞 ${s.customer.phone})<br>
+            ${s.items.map(it=>`• ${it.name} x${it.qty}`).join('<br>')}<br>
+            <span class="badge ${delivered?'bg-success':'bg-warning'} text-dark">${s.status}</span>
+            <select class="form-select form-select-sm d-inline ms-2" data-sales="${i}">
+              <option${s.status==='Preparando pedido'?' selected':''}>Preparando pedido</option>
+              <option${s.status==='Pedido en camino'?' selected':''}>Pedido en camino</option>
+              <option${s.status==='Pedido entregado'?' selected':''}>Pedido entregado</option>
+            </select><br>
+            <small>${s.date}</small>
+          </li>`;
+      });
+      document.getElementById('statTotalSales').textContent = sales.length;
+      const totalRevenue = sales
+        .filter(s=>s.status==='Pedido entregado')
+        .reduce((sum,s)=> sum + s.items.reduce((t,i)=>t + i.price*i.qty,0), 0);
+      document.getElementById('statRevenue').textContent = '$'+totalRevenue;
+      // Actualizar gráfico
+      const last7={}; for(let d=6;d>=0;d--){const dt=new Date();dt.setDate(dt.getDate()-d);last7[dt.toLocaleDateString()]=0;}
+      sales.forEach(s=>{const d=new Date(s.date).toLocaleDateString(); if(last7[d]>=0) last7[d]++;});
+      salesChart.data.labels   = Object.keys(last7);
+      salesChart.data.datasets[0].data = Object.values(last7);
+      salesChart.update();
+    };
+
+    // Chart.js init
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const salesChart = new Chart(ctx,{
+      type:'bar',
+      data:{labels:[],datasets:[{label:'Pedidos',data:[],backgroundColor:'rgba(24,188,156,0.6)'}]},
+      options:{responsive:true,scales:{y:{beginAtZero:true}}}
+    });
+
+    // --- EVENT LISTENERS ---
+
+    // Búsqueda
+    document.getElementById('searchInput').addEventListener('input', e=>{
+      const q=e.target.value.toLowerCase();
+      filtered = products.filter(p=>
+        p.name.toLowerCase().includes(q) ||
+        (p.description||'').toLowerCase().includes(q)
+      );
+      renderProducts(1);
+    });
+
+    // Paginación
+    document.getElementById('pagination').addEventListener('click', e=>{
+      if(!e.target.dataset.page) return;
+      e.preventDefault();
+      renderProducts(+e.target.dataset.page);
+    });
+
+    // Carrito: añadir/remover
+    document.addEventListener('click', e=>{
+      if(e.target.matches('button[data-id]')){
+        const id=e.target.dataset.id, prod=products.find(p=>p.id===id);
+        const idx=cart.findIndex(c=>c.id===id);
+        if(idx>=0) cart[idx].qty++;
+        else cart.push({...prod,qty:1});
+        saveState(); renderCart(); showToast('✔');
+        return;
+      }
+      if(e.target.matches('button[data-rm]')){
+        cart.splice(e.target.dataset.rm,1);
+        saveState(); renderCart(); showToast('×');
+      }
+    });
+
+    // Cambiar qty en carrito
+    document.addEventListener('input', e=>{
+      if(!e.target.matches('input[data-idx]')) return;
+      const i=+e.target.dataset.idx, v=+e.target.value;
+      if(v>0){ cart[i].qty=v; saveState(); renderCart(); }
+    });
+
+    // Abrir carrito
+    document.getElementById('openCartBtn').addEventListener('click', e=>{
+      e.preventDefault(); renderCart();
+      new bootstrap.Modal(document.getElementById('cartModal')).show();
+    });
+
+    // Ir a checkout
+    document.getElementById('toCheckoutBtn').addEventListener('click', ()=>{
+      new bootstrap.Modal(document.getElementById('checkoutModal')).show();
+    });
+
+    // Enviar pedido
+    document.getElementById('checkoutForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      if(!e.target.checkValidity()){
+        e.target.classList.add('was-validated');
+        return;
+      }
+      const data = {
+        customer:{
+          name:e.target.customerName.value,
+          email:e.target.customerEmail.value,
+          phone:e.target.customerPhone.value,
+          address:e.target.customerAddress.value
+        },
+        paymentMethod:e.target.paymentMethod.value,
+        items:cart.map(c=>({id:c.id,name:c.name,price:c.price,qty:c.qty})),
+        status:'Preparando pedido',
+        date:new Date().toString()
+      };
+      sales.push(data);
+      cart = [];
+      saveState(); renderCart(); renderSales();
+      bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+      e.target.reset(); showToast('Pedido enviado');
+    });
+
+    // Cambiar estado pedido
+    document.getElementById('salesHistory').addEventListener('change', e=>{
+      if(e.target.dataset.sales!==undefined){
+        sales[e.target.dataset.sales].status = e.target.value;
+        saveState(); renderSales();
+      }
+    });
+
+    // Toggle admin/login
+    document.getElementById('toggleAdminBtn').addEventListener('click', e=>{
+      e.preventDefault();
+      if(!isLoggedIn) document.getElementById('adminLogin').style.display='block';
+      else {
+        const sec=document.getElementById('adminSection');
+        sec.style.display = sec.style.display==='block'?'none':'block';
+      }
+    });
+
+    // Login admin
+    document.getElementById('loginAdminBtn').addEventListener('click', e=>{
+      const form=e.target.closest('form');
+      if(!form.checkValidity()){
+        form.classList.add('was-validated');
+        return;
+      }
+      const u=document.getElementById('adminUser').value,
+            p=document.getElementById('adminPass').value;
+      if(u===adminCred.user && p===adminCred.pass){
+        isLoggedIn=true; sessionStorage.setItem('isAdmin','1');
+        document.getElementById('adminLogin').style.display='none';
+        document.getElementById('adminSection').style.display='block';
+        renderSales(); renderAdminProducts(); showToast('Bienvenido Admin');
+      } else showToast('Credenciales inválidas','danger');
+    });
+
+    // Preview múltiples imágenes
+    window.newImgData=[];
+    document.getElementById('newProdImgFiles').addEventListener('change', e=>{
+      const files=Array.from(e.target.files), preview=document.getElementById('newImgsPreview');
+      preview.innerHTML=''; window.newImgData=[];
+      files.forEach(file=>{
+        const reader=new FileReader();
+        reader.onload=ev=>{
+          window.newImgData.push(ev.target.result);
+          const img=document.createElement('img');
+          img.src=ev.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Agregar producto
+    document.getElementById('addForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      if(!e.target.checkValidity()){
+        e.target.classList.add('was-validated');
+        return;
+      }
+      const p={
+        id:Date.now().toString(),
+        name:document.getElementById('newProdName').value,
+        price:+document.getElementById('newProdPrice').value,
+        description:document.getElementById('newProdDesc').value,
+        img:window.newImgData.slice()
+      };
+      products.push(p); saveState(); filtered=[...products];
+      renderProducts(1); renderAdminProducts(); showToast('Producto agregado');
+      e.target.reset(); document.getElementById('newImgsPreview').innerHTML=''; window.newImgData=[];
+    });
+
+    // Editar/Eliminar productos admin
+    document.getElementById('adminProductsTable').addEventListener('click', e=>{
+      const id=e.target.dataset.id;
+      if(e.target.matches('.delete-prod-btn')){
+        products=products.filter(p=>p.id!==id); saveState();
+        filtered=[...products]; renderProducts(1); renderAdminProducts();
+      }
+      if(e.target.matches('.edit-prod-btn')){
+        const p=products.find(p=>p.id===id);
+        document.getElementById('editProdId').value=p.id;
+        document.getElementById('editProdName').value=p.name;
+        document.getElementById('editProdPrice').value=p.price;
+        document.getElementById('editProdDesc').value=p.description||'';
+        document.getElementById('editImgPreview').style.display='none';
+        window.editImgData=null;
+        new bootstrap.Modal(document.getElementById('editProductModal')).show();
+      }
+    });
+
+    // Preview editar imagen
+    document.getElementById('editProdImgFile').addEventListener('change', e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        document.getElementById('editImgPreview').src=ev.target.result;
+        document.getElementById('editImgPreview').style.display='block';
+        window.editImgData=ev.target.result;
+      };
+      r.readAsDataURL(f);
+    });
+
+    // Guardar edición
+    document.getElementById('saveEditProductBtn').addEventListener('click', ()=>{
+      const id=document.getElementById('editProdId').value;
+      const p=products.find(x=>x.id===id);
+      p.name=document.getElementById('editProdName').value;
+      p.price=+document.getElementById('editProdPrice').value;
+      p.description=document.getElementById('editProdDesc').value;
+      if(window.editImgData) p.img=[window.editImgData];
+      saveState(); filtered=[...products];
+      renderProducts(1); renderAdminProducts();
+      bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
+      showToast('Producto actualizado');
+    });
+
+    // Detalle de producto
+    document.addEventListener('click', e=>{
+      if(e.target.matches('button[data-id]')) return;
+      const item=e.target.closest('.product-item');
+      if(item){
+        const prod=products.find(p=>p.id===item.dataset.id);
+        const container=document.getElementById('detailImgs');
+        container.innerHTML='';
+        (Array.isArray(prod.img)?prod.img:[prod.img]).forEach(src=>{
+          const img=document.createElement('img');
+          img.src=src; container.appendChild(img);
+        });
+        document.getElementById('detailTitle').textContent=prod.name;
+        document.getElementById('detailPrice').textContent=`$${prod.price} MXN`;
+        document.getElementById('detailDesc').textContent=prod.description||'Sin descripción.';
+        new bootstrap.Modal(document.getElementById('productDetailModal')).show();
+      }
+    });
+
+    // Inicialización
+    if(!products.length){
+      products=[
+        {id:'1',name:'Camisa',price:299,img:['https://via.placeholder.com/400x300?text=Camisa'],description:'Cómoda camisa'},
+        {id:'2',name:'Zapatos',price:599,img:['https://via.placeholder.com/400x300?text=Zapatos'],description:'Elegantes zapatos'},
+        {id:'3',name:'Reloj',price:899,img:['https://via.placeholder.com/400x300?text=Reloj'],description:'Reloj deportivo'}
+      ];
+      saveState();
+    }
+    filtered=[...products];
+    renderProducts(1);
+    renderCart();
+    if(isLoggedIn){
+      document.getElementById('adminSection').style.display='block';
+      renderSales();
+      renderAdminProducts();
+    }
+  })();
+  </script>
+</body>
+</html>
